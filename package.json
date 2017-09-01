@@ -1,0 +1,22 @@
+{
+  "name": "telegram_bot",
+  "version": "0.0.1",
+  "description": "Just testing telegram bot api",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FabricioRojas/telegramBot.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/FabricioRojas/telegramBot/issues"
+  },
+  "homepage": "https://github.com/FabricioRojas/telegramBot#readme",
+  "dependencies": {
+    "node-telegram-bot-api": "^0.28.0"
+  }
+}
