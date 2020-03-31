@@ -7,7 +7,7 @@ Is a simple Telegram Bot that receives files and print them
 
 You must creat a new file called **config.js** on root directyory with this content:
 
-```
+```javascript
 const API_TOKEN = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
 const WHITE_LIST = ["XXXXXXXXX"];
 const PRINTER = {printer: "XXXXXXXXX"};
