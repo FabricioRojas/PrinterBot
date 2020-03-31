@@ -3,7 +3,7 @@ Is a simple Telegram Bot that receives files and print them
 
 
 
-# Installation
+## Installation
 
 You must creat a new file called **config.js** on root directyory with this content:
 
