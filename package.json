@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/FabricioRojas/telegramBot#readme",
   "dependencies": {
+    "hoek": ">=4.2.1",
     "node-telegram-bot-api": "^0.28.0",
     "pdf-to-printer": "^1.4.0"
   }
