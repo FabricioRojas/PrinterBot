@@ -2,12 +2,16 @@ const config = require('./config.js');
 const fs = require('fs');
 const { exec } = require("child_process");
 const TelegramBot = require('node-telegram-bot-api');
+const { Console } = require('console');
 const bot = new TelegramBot(config.getToken(), {polling: true});
 const whiteList = config.getWhiteList();
-const commandsList = {"reply_markup": {"keyboard": [["Cancel", "Status"], ["Set default printer"], ["About"]]}};
+const commandsList = {"reply_markup": {"keyboard": [["Double", "Pages"],["Cancel", "Status"], ["Set default printer", "Reset"], ["About"]]}};
 
+var doubledSided = "";
+var pages = '';
 var receivedImage = null;
 var customPrinter = null;
+var setPages = null;
 
 console.log("** BOT LISTENING **");
 
@@ -22,6 +26,19 @@ bot.onText(/Status/, (msg) => { checkStatus(msg); });
 bot.onText(/Set default printer/, (msg) => { 
     bot.sendMessage(msg.from.id,`Which printer do you want to set as default? (Type "Reset" to set the default config)`, commandsList);
     customPrinter = true; 
+});
+bot.onText(/Double/, (msg) => { 
+    if(msg.text) doubledSided = ' -o sides=two-sided-long-edge';
+    bot.sendMessage(msg.from.id,`Print mode has been changed to doubled sided`, commandsList);
+});
+bot.onText(/Pages/, (msg) => { 
+    bot.sendMessage(msg.from.id,`Set the pages you want to print ( comma separated numbers: 1,2,3 )`, commandsList);
+    setPages = true; 
+});
+bot.onText(/Reset/, (msg) => {
+    msg.text = "";
+    setPrinter(msg);
+    bot.sendMessage(msg.from.id,`All parameters reseted`, commandsList);
 });
 
 bot.on('document', (doc) => {
@@ -47,12 +64,17 @@ bot.on('message', (msg) => {
         if(whiteList.indexOf(msg.from.id+'') != -1){
             if (receivedImage && parseInt(msg.text) > 0) printImage(msg);
             if (customPrinter){
-                if(msg.text == "Reset")msg.text = "";
+                if(msg.text.toLocaleLowerCase == "reset")msg.text = "";
                 setPrinter(msg);         
                 customPrinter = null;
             }
+            if (setPages){
+                if(msg.text) pages = ` -P "${msg.text}"`;
+                setPages = null;
+                bot.sendMessage(msg.from.id,`Pages to print: ${msg.text}`, commandsList);
+            }
         }
-        console.log("Message received: " +  msg.text, msg.from.id, msg.from.first_name); 
+        console.log("Message received: " +  msg.text, msg.from.id, msg.from.first_name);
         // bot.sendMessage(msg.from.id,`I could print any file or image you send me.`, commandsList);
     }       
 });
@@ -71,19 +93,22 @@ function printImage(msg){
 }
 
 function printFile(msg, filePath){
-    exec(`lp -d ${getPrinter(msg)} ${filePath}`, (error, stdout, stderr) => {
+    exec(`lp -d ${getPrinter(msg)} ${filePath}${pages}${doubledSided}`, (error, stdout, stderr) => {
         if (error) {
+            resetParams(msg);
             bot.sendMessage(msg.from.id,`Couldn't send file to printer due to an error. Code 05`, commandsList);
             bot.sendMessage(msg.from.id,`Error: ${error.message}`, commandsList);
             return;
         }
-        if (stderr) {            
+        if (stderr) {        
+            resetParams(msg);    
             bot.sendMessage(msg.from.id,`Couldn't send file to printer due to an error. Code 06`, commandsList);
             console.log(`stderr: ${stderr}`);
             return;
         }
         console.log(`stdout: ${stdout}`);
         bot.sendMessage(msg.from.id,`File sent to printer ${getPrinter(msg)}`, commandsList);
+        resetParams(msg);
     });
 }
 
@@ -112,6 +137,7 @@ function checkStatus(msg){
 }
 
 function cancelProcess(msg){
+    resetParams(msg);
     exec(`cancel -a ${getPrinter(msg)}`, (error, stdout, stderr) => {
         if (error) {
             bot.sendMessage(msg.from.id,`Couldn't empty the queue due to an error. Code 01`, commandsList);
@@ -141,6 +167,7 @@ function getPrinter(msg){
 }
 
 function setPrinter(msg){
+    resetParams(msg);
     try{ 
         fs.writeFileSync('printer.txt', msg.text)
         bot.sendMessage(msg.from.id,`"${getPrinter(msg)}" is now the default printer`, commandsList);
@@ -149,4 +176,11 @@ function setPrinter(msg){
         bot.sendMessage(msg.from.id,`Couldn't set the default printer due to an error. Code 08`, commandsList);
     }
     return printer;
+}
+
+function resetParams(msg){
+    doubledSided = "";
+    pages = '';
+    bot.sendMessage(msg.from.id,`Print mode has been changed to one sided`, commandsList);
+    bot.sendMessage(msg.from.id,`Pages to print: All pages`, commandsList);
 }
