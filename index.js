@@ -5,13 +5,16 @@ const TelegramBot = require('node-telegram-bot-api');
 const { Console } = require('console');
 const bot = new TelegramBot(config.getToken(), {polling: true});
 const whiteList = config.getWhiteList();
-const commandsList = {"reply_markup": {"keyboard": [["Double", "Pages"],["Cancel", "Status"], ["Set default printer", "Reset"], ["About"]]}};
+const commandsList = { "reply_markup": { "keyboard": [["Double", "Pages"], ["Landscape", "Cancel"], ["Set default printer", "Reset"], ["Status", "About"], ["Size", "Hoyo"]]}};
 
 var doubledSided = "";
 var pages = '';
+var size = '';
+var doubledSidedLand = '';
 var receivedImage = null;
 var customPrinter = null;
 var setPages = null;
+var setSize = null;
 
 console.log("** BOT LISTENING **");
 
@@ -27,9 +30,18 @@ bot.onText(/Set default printer/, (msg) => {
     bot.sendMessage(msg.from.id,`Which printer do you want to set as default? (Type "Reset" to set the default config)`, commandsList);
     customPrinter = true; 
 });
+bot.onText(/Size/, (msg) => { 
+    bot.sendMessage(msg.from.id,`Set the page size you want to print ( a4, a5 )`, commandsList);
+    setSize = true;
+});
 bot.onText(/Double/, (msg) => { 
     if(msg.text) doubledSided = ' -o sides=two-sided-long-edge';
     bot.sendMessage(msg.from.id,`Print mode has been changed to doubled sided`, commandsList);
+});
+
+bot.onText(/Landscape/, (msg) => { 
+    if(msg.text) doubledSidedLand = ' -o sides=two-sided-short-edge';
+    bot.sendMessage(msg.from.id,`Print mode has been changed to doubled sided landscape`, commandsList);
 });
 bot.onText(/Pages/, (msg) => { 
     bot.sendMessage(msg.from.id,`Set the pages you want to print ( comma separated numbers: 1,2,3 )`, commandsList);
@@ -45,7 +57,7 @@ bot.on('document', (doc) => {
     console.log("document received: " , doc.from.id, whiteList.indexOf(doc.from.id+''), doc.document.file_name, doc.document.mime_type);
     if(whiteList.indexOf(doc.from.id+'') != -1){  
         bot.sendMessage(doc.from.id,`File received: ${doc.document.file_name}`, commandsList);
-        let filePromise = bot.downloadFile(doc.document.file_id, "downloads");
+        let filePromise = bot.downloadFile(doc.document.file_id, "/var/www/development/PrinterBot/downloads");
         filePromise.then((filePath) => { printFile(doc, filePath); });
     }
 });
@@ -73,6 +85,11 @@ bot.on('message', (msg) => {
                 setPages = null;
                 bot.sendMessage(msg.from.id,`Pages to print: ${msg.text}`, commandsList);
             }
+            if (setSize){
+                if (msg.text) size = ` -o media="${msg.text}" `;
+                setSize = null;
+                bot.sendMessage(msg.from.id,`Page size set to: ${msg.text}`, commandsList);
+            }
         }
         console.log("Message received: " +  msg.text, msg.from.id, msg.from.first_name);
         // bot.sendMessage(msg.from.id,`I could print any file or image you send me.`, commandsList);
@@ -81,7 +98,7 @@ bot.on('message', (msg) => {
 
 function printImage(msg){
     if(receivedImage[parseInt(msg.text)]){
-        let filePromise = bot.downloadFile(receivedImage[parseInt(msg.text)].file_id, "downloads");
+        let filePromise = bot.downloadFile(receivedImage[parseInt(msg.text)].file_id, "/var/www/development/PrinterBot/downloads");
         filePromise.then((filePath) => { 
             printFile(msg, filePath); 
             receivedImage = null;
@@ -93,7 +110,7 @@ function printImage(msg){
 }
 
 function printFile(msg, filePath){
-    exec(`lp -d ${getPrinter(msg)} ${filePath}${pages}${doubledSided}`, (error, stdout, stderr) => {
+    exec(`lp -d ${getPrinter(msg)} ${filePath}${pages}${size}${doubledSided != '' ? doubledSided : doubledSidedLand} -o page-bottom=0 -o page-left=0 -o page-top=0 -o page-right=0`, (error, stdout, stderr) => {
         if (error) {
             resetParams(msg);
             bot.sendMessage(msg.from.id,`Couldn't send file to printer due to an error. Code 05`, commandsList);
@@ -180,6 +197,7 @@ function setPrinter(msg){
 
 function resetParams(msg){
     doubledSided = "";
+    doubledSidedLand = "";
     pages = '';
     bot.sendMessage(msg.from.id,`Print mode has been changed to one sided`, commandsList);
     bot.sendMessage(msg.from.id,`Pages to print: All pages`, commandsList);
