@@ -151,7 +151,6 @@ function checkStatus(msg){
             bot.sendMessage(msg.from.id,`It seems the printer "${getPrinter(msg)}" couldn't be found`, commandsList);
         }
     });
-}
 
 function cancelProcess(msg){
     resetParams(msg);
